@@ -44,7 +44,7 @@ class Neo4jClient:
                 logger.info(f"Query selesai. Ditemukan {len(records_list)} data.")
                 return response
         except Exception as e:
-            logger.info("ERROR - Gagal execute Query: ", e)
+            logger.error("ERROR - Gagal execute Query: ", e)
             return None
             
 if __name__ == "__main__":
