@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Environment Variables (PENTING: Biar password gak bocor) ---
+.env
+.env.local
+
+# --- Logs (Yang baru kita setup) ---
+logs/
+*.log
+
+# --- Neo4j & Docker Volumes (PENTING: Jangan commit database!) ---
+# Sesuai dengan volumes di docker-compose.yml kamu
+neo4j_data/
+neo4j_logs/
+neo4j_plugins/
+neo4j_import/
+
+# --- IDE / Editor Settings (Opsional, biar gak ganggu tim lain) ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
