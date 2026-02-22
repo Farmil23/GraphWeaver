@@ -7,6 +7,10 @@ from app.core.config import settings
 from app.db.neo4j_client import Neo4jClient
 from app.services.llm_service import GroqClient
 
+from langchain_community.document_loaders import PyMuPDFLoader
+import tempfile
+import os
+
 # ==========================================
 # 1. DEFINISI SCHEMA (BLUEPRINT DATABASE)
 # ==========================================
@@ -68,6 +72,7 @@ class ExtractionResult(BaseModel):
 # 3. SERVICE CLASS UTAMA
 # ==========================================
 
+
 class GraphExtractorService:
     def __init__(self):
         # Inisialisasi Llama-3 via Groq
@@ -115,6 +120,41 @@ class GraphExtractorService:
         result = chain.invoke({})
         return result
 
+    def load_pdf_content(self, file_path: str) -> str:
+        """Menggunakan LangChain PyMuPDFLoader untuk membaca PDF"""
+        loader = PyMuPDFLoader(file_path)
+        documents = loader.load()
+
+        full_text = "\n".join([doc.page_content for doc in documents])
+        return full_text
+    
+    def process_uploaded_file(self, uploaded_file):
+        """Handle file upload dari Streamlit menggunakan temporary file"""
+        # Buat file sementara karena PyMuPDFLoader butuh path string
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            tmp_path = tmp_file.name
+
+        try:
+            if uploaded_file.type == "application/pdf":
+                text = self.load_pdf_content(tmp_path)
+            else:
+                # Untuk TXT tetap bisa baca langsung
+                text = uploaded_file.getvalue().decode("utf-8")
+
+            if text.strip():
+                # Jalankan ekstraksi LLM
+                extraction_result = self.extract(text, source_doc=uploaded_file.name)
+                # Simpan ke Neo4j
+                self.save_to_neo4j(extraction_result)
+                return True
+        finally:
+            # Hapus file sementara setelah selesai
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        
+        return False
+    
     def save_to_neo4j(self, data: ExtractionResult):
         """
         Menyimpan hasil ekstraksi ke Database Neo4j dengan query Cypher yang aman.
@@ -157,7 +197,7 @@ class GraphExtractorService:
             rels_dict = [{
                 "source_id": r.source.id,
                 "target_id": r.target.id,
-                "type": r.type.upper().replace(" ", "_"), # Normalisasi nama relasi
+                "type": r.type.upper().replace(" ", "_"),
                 "details": r.details or ""
             } for r in data.relationships]
             
