@@ -3,3 +3,7 @@ langgraph
 neo4j
 pydantic
 pydantic-settings
+flask
+flask-cors
+
+streamlit
