@@ -72,6 +72,21 @@ class GraphRetrieverService:
                         RETURN p, r1, r2, n1, n2,
                             r3, r4, m1, m2,
                             r5, r6, m3, m4"""},
+            {"question" : "ada berapaa john doe disini? dan berikan semua relasinya", 
+             "cyper" :  """MATCH (p:Person)
+                        WHERE p.name CONTAINS 'John Doe'
+                        WITH p, count(p) AS jumlah_john_doe
+
+                        OPTIONAL MATCH (p)-[r]->(neighbor)
+                        RETURN jumlah_john_doe,
+                            collect({
+                                personId: id(p),
+                                personName: p.name,
+                                relType: type(r),
+                                targetId: id(neighbor),
+                                targetLabels: labels(neighbor),
+                                targetProps: properties(neighbor)
+                            }) AS relasi;"""},
         ]
         
         return f"""
