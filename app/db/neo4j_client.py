@@ -1,7 +1,9 @@
 from neo4j import GraphDatabase
 from app.core.config import settings
 from app.core.logging import get_logger
-
+from app.core.logging import setup_logging
+    
+setup_logging()
 logger = get_logger(__name__)
 
 class Neo4jClient:
@@ -48,9 +50,7 @@ class Neo4jClient:
             return None
             
 if __name__ == "__main__":
-    from app.core.logging import setup_logging
     
-    setup_logging()
     
     neo4j_client = Neo4jClient()
     try:
