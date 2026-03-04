@@ -5,5 +5,4 @@ pydantic
 pydantic-settings
 flask
 flask-cors
-
 streamlit
