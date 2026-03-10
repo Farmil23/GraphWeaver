@@ -1,8 +1,26 @@
-langchain-groq
-langgraph
-neo4j
-pydantic
-pydantic-settings
+# Web Framework & Server
 flask
 flask-cors
+werkzeug
+uvicorn
+fastapi
+python-multipart
+
+# AI & Orchestration
+langgraph
+langchain-groq
+pydantic
+pydantic-settings
+langchain-community
+langchain-core
+langchain_neo4j
+pymupdf
+
+# Database
+neo4j
+
+# UI / Dashboard (Jika ingin menjalankan gui.py)
 streamlit
+
+# Utilities
+python-dotenv
