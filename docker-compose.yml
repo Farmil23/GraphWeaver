@@ -1,17 +1,29 @@
-
 services:
-  # Ini service Database Graph kita
+  # Service Database Neo4j
   neo4j:
-    image: neo4j:latest  # Ambil image resmi terbaru
+    image: neo4j:latest
     container_name: graphweaver_db
     ports:
-      - "7474:7474"  # Port buat buka Dashboard di Browser (HTTP)
-      - "7687:7687"  # Port buat Python ngobrol sama DB (Bolt)
+      - "7474:7474"  # Dashboard HTTP
+      - "7687:7687"  # Bolt Port
     environment:
-      # Auth dimatikan dulu biar gampang belajar (Nanti di .env kalau mau aman)
-      - NEO4J_AUTH=neo4j/badsfarmil232615
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD} # Mengambil password dari .env
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
     volumes:
-      # PENTING! Biar kalau Docker dimatiin, datanya GAK HILANG.
       - ./neo4j_data:/data
       - ./neo4j_logs:/logs
+    restart: unless-stopped
+
+  # Service Aplikasi Python
+  app:
+    build: .
+    container_name: graphweaver_app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env # Menggunakan variabel lingkungan dari file .env
+    depends_on:
+      - neo4j # Pastikan DB jalan duluan
     restart: unless-stopped
