@@ -30,6 +30,10 @@ neo4j_import/
 .idea/
 *.swp
 
+# --- Runtime files ---
+sessions.json
+uploads/
+
 # --- OS Specific ---
 .DS_Store
 Thumbs.db

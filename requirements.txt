@@ -1,26 +1,30 @@
-# Web Framework & Server
-flask
-flask-cors
-werkzeug
-uvicorn
+# ── Web Framework & Server ─────────────────────────────────────────────────
 fastapi
+uvicorn[standard]
 python-multipart
+jinja2
+aiofiles
+werkzeug
 
-# AI & Orchestration
+# ── HTTP Client (DOKU API) ────────────────────────────────────────────────
+httpx
+
+# ── AI & Orchestration ────────────────────────────────────────────────────
 langgraph
+langchain-openai
 langchain-groq
-pydantic
-pydantic-settings
 langchain-community
 langchain-core
 langchain_neo4j
+pydantic
+pydantic-settings
+
+# ── Database ─────────────────────────────────────────────────────────────
+neo4j
 pymupdf
 
-# Database
-neo4j
-
-# UI / Dashboard (Jika ingin menjalankan gui.py)
-streamlit
-
-# Utilities
+# ── Utilities ────────────────────────────────────────────────────────────
 python-dotenv
+rapidfuzz
+jellyfish
+requests

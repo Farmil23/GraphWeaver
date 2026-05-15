@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinAgent — B2B KYC &amp; Due Diligence</title>
+  <link rel="icon" href="/static/img/logo.png" type="image/png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="/static/css/style.css?v=5"/>
+  <!-- Critical layout override — bypasses browser CSS cache issues -->
+  <style>
+    html, body { margin:0; padding:0; box-sizing:border-box; }
+    body { display:flex !important; flex-direction:row !important; height:100vh !important; overflow:hidden !important; background:#070d1a; }
+    .sidebar { width:220px !important; flex-shrink:0 !important; display:flex !important; flex-direction:column !important; height:100vh !important; overflow-y:auto; overflow-x:hidden; background:#0d1526; border-right:1px solid #1e3050; z-index:50; }
+    .sidebar.collapsed { width:60px !important; }
+    .sidebar.collapsed .sidebar-brand-text, .sidebar.collapsed .sidebar-nav-item span, .sidebar.collapsed .sidebar-section-label, .sidebar.collapsed .sidebar-mode, .sidebar.collapsed .sidebar-footer .nav-badge { display:none !important; }
+    .sidebar-logo { height:36px !important; width:auto !important; }
+    .app-main { flex:1 !important; min-width:0 !important; min-height:0 !important; height:100vh !important; overflow:hidden !important; display:flex !important; flex-direction:column !important; }
+    .topbar { display:flex !important; align-items:center; justify-content:space-between; padding:0 18px; height:48px; flex-shrink:0; background:rgba(7,13,26,.95); border-bottom:1px solid #1e3050; gap:12px; }
+    .view { display:none !important; }
+    .view.active { display:flex !important; flex-direction:column !important; flex:1 !important; min-height:0 !important; overflow:hidden !important; }
+    .chat-workspace { display:flex !important; flex-direction:row !important; flex:1 !important; min-height:0 !important; overflow:hidden !important; }
+    .chat-main { display:flex !important; flex-direction:column !important; flex:1 !important; min-width:0 !important; overflow:hidden !important; }
+    #chat-messages { flex:1 !important; overflow-y:auto !important; min-height:0 !important; margin:0 !important; }
+    .chat-input-area { flex-shrink:0 !important; margin:0 !important; }
+    #view-chat { height:100% !important; }
+    .panel-resize-handle { width:5px !important; flex-shrink:0 !important; cursor:col-resize !important; }
+    .chat-side { display:flex !important; flex-direction:column !important; width:300px !important; flex-shrink:0 !important; min-height:0 !important; overflow:hidden !important; }
+    .chat-side.panel-fullscreen { width:60vw !important; }
+    .chat-graph-card { flex:0 0 auto !important; }
+    .doc-list-card { flex:1 !important; overflow-y:auto !important; min-height:0 !important; }
+    .graph-container-mini { height:280px !important; transition:height .2s !important; }
+    .chat-side.panel-fullscreen .graph-container-mini { height:60vh !important; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="/static/img/logo.png" alt="FinAgent" class="sidebar-logo"/>
+    <div class="sidebar-brand-text">
+      <span class="sidebar-name">FinAgent</span>
+      <span class="sidebar-sub">B2B KYC Platform</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <button class="sidebar-nav-item active" id="nav-dashboard" onclick="switchView('dashboard')">
+      <i class="fa-solid fa-gauge-high"></i>
+      <span>Dashboard</span>
+    </button>
+    <button class="sidebar-nav-item" id="nav-chat" onclick="switchView('chat')">
+      <i class="fa-solid fa-comments"></i>
+      <span>Investigasi</span>
+    </button>
+    <button class="sidebar-nav-item" id="nav-documents" onclick="switchView('documents')">
+      <i class="fa-solid fa-folder-open"></i>
+      <span>Dokumen</span>
+      <span class="sidebar-badge" id="doc-count-badge" style="display:none"></span>
+    </button>
+  </nav>
+
+  <!-- Mode selector (global) -->
+  <div class="sidebar-mode">
+    <p class="sidebar-section-label">Investigation Mode</p>
+    <div class="mode-toggle">
+      <label class="mode-toggle-opt" id="mode-basic-label">
+        <input type="radio" name="mode" value="basic" id="mode-basic" checked/>
+        <div class="mode-toggle-body">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Basic</span>
+          <span class="tag tag-free">FREE</span>
+        </div>
+      </label>
+      <label class="mode-toggle-opt" id="mode-deep-label">
+        <input type="radio" name="mode" value="deep" id="mode-deep"/>
+        <div class="mode-toggle-body">
+          <i class="fa-solid fa-microscope"></i>
+          <span>Deep</span>
+          <span class="tag tag-premium">Rp 50k</span>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <span id="api-status" class="status-dot status-checking">
+      <i class="fa-solid fa-circle"></i> Connecting…
+    </span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+      <span class="nav-badge badge-ai" style="font-size:.62rem;padding:2px 8px"><i class="fa-solid fa-brain"></i> LangGraph</span>
+      <span class="nav-badge badge-neo4j" style="font-size:.62rem;padding:2px 8px"><i class="fa-solid fa-diagram-project"></i> Neo4j</span>
+      <span class="nav-badge badge-doku" style="font-size:.62rem;padding:2px 8px"><i class="fa-solid fa-credit-card"></i> DOKU</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════ APP MAIN ═══════════════════ -->
+<div class="app-main">
+
+  <!-- Top bar (slim) -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div id="topbar-breadcrumb" class="topbar-breadcrumb">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </div>
+    </div>
+    <div class="topbar-center" id="graph-stats">
+      <div class="stat-pill"><i class="fa-solid fa-circle-nodes"></i> <span id="stat-nodes">—</span> Entities</div>
+      <div class="stat-pill"><i class="fa-solid fa-arrows-left-right-to-line"></i> <span id="stat-rels">—</span> Relations</div>
+      <div class="stat-pill"><i class="fa-solid fa-building"></i> <span id="stat-companies">—</span> Companies</div>
+      <div class="stat-pill"><i class="fa-solid fa-user-tie"></i> <span id="stat-persons">—</span> Persons</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-icon" onclick="loadGraph(); loadGraphStats();" title="Refresh data">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─────────────────── VIEW: DASHBOARD ─────────────────── -->
+  <div class="view active" id="view-dashboard">
+    <div class="dashboard-grid">
+
+      <!-- Graph (main) -->
+      <div class="card graph-card dash-graph">
+        <div class="graph-header">
+          <h3 class="card-title"><i class="fa-solid fa-diagram-project"></i> Knowledge Graph</h3>
+          <div class="graph-controls">
+            <input type="text" id="graph-filter" placeholder="Filter entity…" class="graph-filter-input"/>
+            <button class="btn-icon" onclick="loadGraph()" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+            <button class="btn-icon" onclick="fitGraph()" title="Fit view"><i class="fa-solid fa-expand"></i></button>
+          </div>
+        </div>
+        <div class="graph-legend">
+          <span class="legend-item" style="--c:#3b82f6"><i class="fa-solid fa-circle"></i> Person</span>
+          <span class="legend-item" style="--c:#22c55e"><i class="fa-solid fa-circle"></i> Company</span>
+          <span class="legend-item" style="--c:#f59e0b"><i class="fa-solid fa-circle"></i> Address</span>
+          <span class="legend-item" style="--c:#a855f7"><i class="fa-solid fa-circle"></i> Document</span>
+        </div>
+        <div id="graph-container" class="graph-container">
+          <div class="graph-placeholder" id="graph-placeholder">
+            <i class="fa-solid fa-diagram-project fa-3x"></i>
+            <p>Upload a document to populate the graph</p>
+          </div>
+        </div>
+        <div id="graph-info" class="graph-info hidden"></div>
+      </div>
+
+      <!-- Pipeline -->
+      <div class="card pipeline-card dash-pipeline">
+        <h3 class="card-title"><i class="fa-solid fa-timeline"></i> LangGraph Pipeline</h3>
+        <div class="pipeline" id="pipeline">
+          <div class="pipeline-step step-idle" data-node="payment_gatekeeper">
+            <div class="step-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="step-body"><span class="step-name">Payment Gatekeeper</span><span class="step-desc">Checks tier &amp; payment</span></div>
+            <div class="step-status"><i class="fa-regular fa-circle"></i></div>
+          </div>
+          <div class="pipeline-connector"></div>
+          <div class="pipeline-step step-idle" data-node="planning">
+            <div class="step-icon"><i class="fa-solid fa-brain"></i></div>
+            <div class="step-body"><span class="step-name">Query Planning</span><span class="step-desc">Decomposes question</span></div>
+            <div class="step-status"><i class="fa-regular fa-circle"></i></div>
+          </div>
+          <div class="pipeline-connector"></div>
+          <div class="pipeline-step step-idle" data-node="write_query">
+            <div class="step-icon"><i class="fa-solid fa-code"></i></div>
+            <div class="step-body"><span class="step-name">Cypher Generation</span><span class="step-desc">LLM generates Neo4j query</span></div>
+            <div class="step-status"><i class="fa-regular fa-circle"></i></div>
+          </div>
+          <div class="pipeline-connector"></div>
+          <div class="pipeline-step step-idle" data-node="run_query">
+            <div class="step-icon"><i class="fa-solid fa-database"></i></div>
+            <div class="step-body"><span class="step-name">Neo4j Execution</span><span class="step-desc">Graph traversal</span></div>
+            <div class="step-status"><i class="fa-regular fa-circle"></i></div>
+          </div>
+          <div class="pipeline-connector"></div>
+          <div class="pipeline-step step-idle" data-node="answer_user">
+            <div class="step-icon"><i class="fa-solid fa-file-contract"></i></div>
+            <div class="step-body"><span class="step-name">Analysis &amp; Report</span><span class="step-desc">LLM synthesises findings</span></div>
+            <div class="step-status"><i class="fa-regular fa-circle"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="card upload-card dash-upload">
+        <h3 class="card-title"><i class="fa-solid fa-file-arrow-up"></i> Knowledge Graph Ingestion</h3>
+        <div class="drop-zone" id="drop-zone">
+          <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+          <p>Drag &amp; drop PDF / TXT or <label for="file-input" class="file-link">browse</label></p>
+          <p class="drop-hint">LLM extracts entities → stored in Neo4j</p>
+          <input type="file" id="file-input" accept=".pdf,.txt" hidden/>
+        </div>
+        <div id="upload-status" class="upload-status hidden"></div>
+        <div id="processed-files" class="processed-files"></div>
+      </div>
+
+    </div><!-- /dashboard-grid -->
+  </div><!-- /view-dashboard -->
+
+  <!-- ─────────────────── VIEW: INVESTIGASI (CHAT) ─────────────────── -->
+  <div class="view hidden" id="view-chat">
+    <div class="chat-workspace">
+
+      <!-- Main Chat Panel -->
+      <div class="chat-main">
+        <div class="chat-messages" id="chat-messages">
+          <div class="message msg-assistant">
+            <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div class="msg-bubble">
+              <p>Hello. I am <strong>FinAgent</strong> — your B2B Due Diligence AI.</p>
+              <p>Upload a corporate document in <em>Dashboard</em> and ask anything about entities, ownership structures, or risk indicators. Select <em>Deep Investigation</em> in the sidebar to unlock full knowledge graph analysis.</p>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" class="chat-input"
+            placeholder="Tanyakan tentang entitas, kepemilikan, atau risiko korporat…"
+            autocomplete="off"/>
+          <button class="btn-send" id="btn-send" onclick="submitQuestion()">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drag-to-resize handle -->
+      <div class="panel-resize-handle" id="panel-resize-handle"></div>
+
+      <!-- Side Panel: Mini Graph + Docs -->
+      <div class="chat-side" id="chat-side">
+
+        <!-- Panel header with controls -->
+        <div class="chat-side-header">
+          <span><i class="fa-solid fa-diagram-project"></i> Panel Analisis</span>
+          <div class="panel-btns">
+            <button class="panel-btn" onclick="togglePanelFullscreen()" id="btn-panel-fs" title="Perlebar/Perkecil panel">
+              <i class="fa-solid fa-expand"></i> Lebar
+            </button>
+            <button class="panel-btn" onclick="loadGraph();renderMiniGraph()" title="Refresh graph">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mini Knowledge Graph -->
+        <div class="card chat-graph-card">
+          <div id="graph-container-mini" class="graph-container-mini">
+            <div class="graph-placeholder" id="graph-placeholder-mini">
+              <i class="fa-solid fa-diagram-project fa-2x"></i>
+              <p style="font-size:.75rem">No data yet</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Document List -->
+        <div class="card doc-list-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px">
+            <h4 class="card-title" style="font-size:.8rem"><i class="fa-solid fa-folder-open"></i> Dokumen Terunggah</h4>
+            <button class="btn-icon" onclick="loadDocuments()" style="padding:4px 6px;font-size:.7rem" title="Refresh">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+          <div id="doc-list" class="doc-list">
+            <p class="empty-state-small">Belum ada dokumen</p>
+          </div>
+        </div>
+
+      </div><!-- /chat-side -->
+    </div><!-- /chat-workspace -->
+  </div><!-- /view-chat -->
+
+  <!-- ─────────────────── VIEW: DOKUMEN ─────────────────── -->
+  <div class="view hidden" id="view-documents">
+    <div class="docs-workspace">
+      <div class="docs-header">
+        <h2 class="docs-title"><i class="fa-solid fa-folder-open"></i> Manajemen Dokumen</h2>
+        <p class="docs-sub">Dokumen yang telah diupload dan diproses ke dalam Knowledge Graph</p>
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <div class="drop-zone drop-zone-compact" id="drop-zone-docs">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Upload dokumen baru</span>
+            <label for="file-input-docs" class="file-link">pilih file</label>
+            <input type="file" id="file-input-docs" accept=".pdf,.txt" hidden/>
+          </div>
+        </div>
+        <div id="upload-status-docs" class="upload-status hidden" style="margin-top:8px"></div>
+      </div>
+      <div id="doc-grid" class="doc-grid">
+        <div class="doc-empty">
+          <i class="fa-solid fa-inbox fa-3x"></i>
+          <p>Belum ada dokumen. Upload file PDF atau TXT untuk memulai.</p>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-documents -->
+
+</div><!-- /app-main -->
+
+<!-- ═══════════════════ PAYMENT PAYWALL MODAL ═══════════════════ -->
+<div class="modal-overlay hidden" id="paywall-modal">
+  <div class="modal paywall-modal">
+    <div class="paywall-badge">PREMIUM FEATURE</div>
+    <div class="paywall-icon"><i class="fa-solid fa-lock"></i></div>
+    <h2 class="paywall-title">Deep Investigation Locked</h2>
+    <p class="paywall-desc">
+      Full multi-hop entity relationship mapping, beneficial ownership detection,
+      and shell company tracing requires <strong>premium compute</strong>.
+      Complete the DOKU payment to unlock your analysis.
+    </p>
+
+    <div class="paywall-price-box">
+      <div class="price-label">One-time investigation fee</div>
+      <div class="price-amount">Rp <span class="price-number">50.000</span></div>
+      <div class="price-detail">Sandbox mode — no real charge</div>
+    </div>
+
+    <div class="paywall-features">
+      <div class="feature-item"><i class="fa-solid fa-check"></i> Multi-hop Neo4j graph traversal</div>
+      <div class="feature-item"><i class="fa-solid fa-check"></i> Beneficial ownership mapping</div>
+      <div class="feature-item"><i class="fa-solid fa-check"></i> Shell company detection</div>
+      <div class="feature-item"><i class="fa-solid fa-check"></i> Full LLM due-diligence report + Export PDF</div>
+    </div>
+
+    <div class="paywall-actions">
+      <a id="doku-pay-btn" href="#" target="_blank" class="btn btn-doku">
+        <i class="fa-solid fa-credit-card"></i>
+        Pay via DOKU Checkout
+      </a>
+      <button class="btn btn-simulate" id="btn-simulate" onclick="simulatePayment()">
+        <i class="fa-solid fa-bolt"></i>
+        Simulate Payment Success <span class="tag tag-demo">DEMO</span>
+      </button>
+    </div>
+
+    <div id="paywall-processing" class="paywall-processing hidden">
+      <div class="spinner"></div>
+      <p id="paywall-processing-msg">Processing payment confirmation…</p>
+    </div>
+
+    <div class="paywall-session-info">
+      Session: <code id="paywall-session-id">—</code>
+      &nbsp;|&nbsp;
+      Invoice: <code id="paywall-invoice-id">—</code>
+    </div>
+
+    <button class="modal-close" onclick="closePaywall()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+</div>
+
+<!-- ═══════════════════ TOAST ═══════════════════ -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script src="/static/js/app.js?v=12"></script>
+
+{% if auto_resume_session %}
+<script>
+  window.addEventListener('DOMContentLoaded', async () => {
+    const sid = "{{ auto_resume_session }}";
+    if (!sid) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'payment-banner';
+    banner.style.cssText =
+      'position:fixed;top:0;left:0;right:0;background:#10b981;color:#fff;padding:14px 20px;' +
+      'text-align:center;font-size:0.95rem;z-index:9999;font-weight:600;display:flex;' +
+      'align-items:center;justify-content:center;gap:12px;';
+    banner.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengonfirmasi pembayaran…';
+    document.body.prepend(banner);
+
+    // ── ALWAYS fire webhook first — this is the most important step ─────────
+    let webhookOk = false;
+    try {
+      const wh = await fetch('/webhooks/doku-paid', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          session_id:     sid,
+          status:         'SUCCESS',
+          transaction_id: 'DOKU-REDIRECT-' + sid.slice(0,8).toUpperCase(),
+        }),
+      });
+      webhookOk = wh.ok;
+      if (!wh.ok) console.warn('Webhook response:', await wh.text());
+    } catch (e) {
+      console.warn('Webhook fetch error:', e.message);
+    }
+
+    // ── If opened in new tab (opener = original tab), notify it and close ───
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.postMessage({ type: 'DOKU_PAYMENT_SUCCESS', session_id: sid, webhookOk }, '*');
+      } catch (_) {}
+      banner.innerHTML = '<i class="fa-solid fa-circle-check"></i> Pembayaran dikonfirmasi! Kembali ke tab utama…';
+      setTimeout(() => window.close(), 1200);
+      return;
+    }
+
+    // ── Same-tab flow: store session then redirect to clean URL ─────────────
+    if (webhookOk) {
+      // Save session so the main page picks it up after redirect
+      localStorage.setItem('_resumeAfterPayment', sid);
+      localStorage.setItem('_pendingSessionId',   sid);
+      banner.innerHTML = '<i class="fa-solid fa-circle-check"></i> Pembayaran dikonfirmasi! Kembali ke dashboard…';
+      // Redirect to / so page refresh won't re-fire the webhook
+      setTimeout(() => { window.location.replace('/'); }, 800);
+    } else {
+      banner.innerHTML =
+        '<i class="fa-solid fa-triangle-exclamation"></i> Sesi tidak ditemukan. ' +
+        'Kembali dan gunakan <strong>Simulate Payment</strong>. &nbsp;' +
+        '<a href="/" style="color:#fff;text-decoration:underline;">Dashboard</a>';
+      banner.style.background = '#f59e0b';
+    }
+  });
+
+  // Listen for messages from child tab (when THIS is the original tab)
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'DOKU_PAYMENT_SUCCESS') {
+      const sid = e.data.session_id;
+      showToast('✅ Pembayaran dikonfirmasi! Investigasi sedang berjalan…', 'success');
+      if (typeof closePaywall === 'function') closePaywall();
+      _pendingSessionId = sid;
+      const typingId = typeof addTypingIndicator === 'function' ? addTypingIndicator() : null;
+      if (typeof pollResultAfterPayment === 'function') {
+        pollResultAfterPayment(sid, typingId, null);
+      } else if (typeof pollResult === 'function') {
+        pollResult(sid);
+      }
+    }
+  });
+</script>
+{% else %}
+<script>
+  // Original tab: listens for payment success from DOKU redirect tab
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'DOKU_PAYMENT_SUCCESS') {
+      const sid = e.data.session_id;
+      showToast('✅ Pembayaran dikonfirmasi! Investigasi sedang berjalan…', 'success');
+      if (typeof closePaywall === 'function') closePaywall();
+      if (typeof switchView === 'function') switchView('chat');
+      _pendingSessionId = sid;
+      const typingId = typeof addTypingIndicator === 'function' ? addTypingIndicator() : null;
+      if (typeof pollResultAfterPayment === 'function') {
+        pollResultAfterPayment(sid, typingId, null);
+      } else if (typeof pollResult === 'function') {
+        pollResult(sid);
+      }
+    }
+  });
+</script>
+{% endif %}
+
+</body>
+</html>
